@@ -423,10 +423,6 @@
               <i class="fa-solid fa-file-arrow-down"></i>
               <span>Export CSV</span>
             </button>
-            <button onclick="openConfigModal()" class="px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition flex items-center gap-1" title="System & Geofence Settings">
-              <i class="fa-solid fa-sliders"></i>
-              <span>Settings</span>
-            </button>
             <button onclick="openChangePasswordModal()" class="px-3 py-1.5 rounded-xl text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 transition flex items-center gap-1" title="Change Account Password">
               <i class="fa-solid fa-key"></i>
               <span>Password</span>
@@ -936,117 +932,6 @@
         </button>
       </div>
 
-    </div>
-  </div>
-
-  <!-- MODAL 4: SYSTEM & GEOFENCE SETTINGS -->
-  <div id="configModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-3.5">
-    <div class="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-sm sm:max-w-lg w-full p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
-      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
-        <div class="flex items-center space-x-2">
-          <div class="w-7 h-7 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center font-bold">
-            <i class="fa-solid fa-sliders text-xs"></i>
-          </div>
-          <div>
-            <h3 class="text-sm sm:text-base font-bold text-slate-900">System & Geofence Settings</h3>
-            <p class="text-[10px] text-slate-400">Google Apps Script Web App & Office Target</p>
-          </div>
-        </div>
-        <button onclick="closeConfigModal()" class="w-7 h-7 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 flex items-center justify-center transition">
-          <i class="fa-solid fa-xmark text-sm"></i>
-        </button>
-      </div>
-
-      <div class="py-3 space-y-3 text-xs">
-        <div>
-          <label class="block font-bold text-slate-700 uppercase mb-1">
-            Google Apps Script Web App URL
-          </label>
-          <input 
-            type="url" 
-            id="cfgGasUrl" 
-            placeholder="https://script.google.com/macros/s/.../exec" 
-            class="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-800 focus:bg-white focus:border-echaar-blue focus:outline-none"
-          />
-          <p class="text-[10px] text-emerald-600 font-semibold mt-1">
-            <i class="fa-solid fa-circle-check mr-1"></i> Connected to your live Google Sheet deployment.
-          </p>
-        </div>
-
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="block font-bold text-slate-700 uppercase mb-1">Office Latitude</label>
-            <input 
-              type="number" 
-              step="any" 
-              id="cfgOfficeLat" 
-              value="19.193740" 
-              class="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-800"
-            />
-          </div>
-          <div>
-            <label class="block font-bold text-slate-700 uppercase mb-1">Office Longitude</label>
-            <input 
-              type="number" 
-              step="any" 
-              id="cfgOfficeLng" 
-              value="72.957355" 
-              class="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-800"
-            />
-          </div>
-        </div>
-
-        <div>
-          <label class="block font-bold text-slate-700 uppercase mb-1">
-            Allowed Geofence Radius (Meters)
-          </label>
-          <input 
-            type="number" 
-            id="cfgAllowedRadius" 
-            value="80" 
-            class="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-800"
-          />
-        </div>
-
-        <button 
-          type="button" 
-          onclick="setOfficeToCurrentLocation()" 
-          class="w-full py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 rounded-xl font-semibold border border-amber-200 transition flex items-center justify-center gap-1.5 text-xs">
-          <i class="fa-solid fa-crosshairs"></i>
-          <span>Set Target to My Current GPS Position</span>
-        </button>
-
-        <div class="p-2.5 bg-slate-50 rounded-xl border border-slate-200">
-          <div class="font-bold text-slate-700 mb-0.5 flex items-center justify-between text-[11px]">
-            <span>Device Fingerprint (1 Device Per Day Lock):</span>
-            <span class="text-[9px] text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded font-mono font-bold">ENFORCED</span>
-          </div>
-          <p id="cfgDeviceFingerprintText" class="font-mono text-slate-500 break-all text-[10px]"></p>
-        </div>
-
-        <!-- Testing Simulation Toggle (Housed in Settings) -->
-        <div class="p-2.5 bg-indigo-50/70 border border-indigo-100 rounded-xl flex items-center justify-between text-xs">
-          <div>
-            <div class="font-bold text-indigo-900 text-[11px] flex items-center gap-1">
-              <i class="fa-solid fa-vial text-indigo-500"></i> Testing Mode: Simulate Inside Office
-            </div>
-            <p class="text-[10px] text-indigo-600">Simulates user being within 80m of office coordinates</p>
-          </div>
-          <label class="relative inline-flex items-center cursor-pointer shrink-0 ml-2">
-            <input type="checkbox" id="simulateAtOfficeToggle" onchange="toggleSimulatedLocation()" class="sr-only peer">
-            <div class="w-8 h-4 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-emerald-600"></div>
-          </label>
-        </div>
-      </div>
-
-      <div class="flex items-center space-x-2 pt-2">
-        <button onclick="closeConfigModal()" class="w-1/2 py-2 rounded-xl border border-slate-200 text-slate-600 font-semibold text-xs hover:bg-slate-50 transition">
-          Cancel
-        </button>
-        <button onclick="saveConfigSettings()" class="w-1/2 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs shadow-md transition">
-          Save Settings
-        </button>
-      </div>
     </div>
   </div>
 
@@ -3558,8 +3443,6 @@
 
     function handleEmergencySimToggle(checked) {
       state.isSimulatingOffice = checked;
-      const simToggle = document.getElementById('simulateAtOfficeToggle');
-      if (simToggle) simToggle.checked = checked;
       refreshUserLocation(true);
       updateEmergencySimModalUI();
       showToast(state.isSimulatingOffice ? 'success' : 'info', 
@@ -3571,8 +3454,6 @@
       state.isSimulatingOffice = !state.isSimulatingOffice;
       const emToggle = document.getElementById('emergencySimulateToggle');
       if (emToggle) emToggle.checked = state.isSimulatingOffice;
-      const simToggle = document.getElementById('simulateAtOfficeToggle');
-      if (simToggle) simToggle.checked = state.isSimulatingOffice;
       refreshUserLocation(true);
       updateEmergencySimModalUI();
       showToast(state.isSimulatingOffice ? 'success' : 'info', 
@@ -3610,49 +3491,6 @@
         if (btnText) {
           btnText.textContent = 'Activate Office Simulation';
         }
-      }
-    }
-
-    function openConfigModal() {
-      document.getElementById('cfgGasUrl').value = CONFIG.GAS_WEB_APP_URL || LIVE_GAS_URL;
-      document.getElementById('cfgOfficeLat').value = CONFIG.OFFICE_LAT;
-      document.getElementById('cfgOfficeLng').value = CONFIG.OFFICE_LNG;
-      document.getElementById('cfgAllowedRadius').value = CONFIG.ALLOWED_RADIUS_METERS;
-      document.getElementById('cfgDeviceFingerprintText').textContent = state.deviceFingerprint;
-      const simToggle = document.getElementById('simulateAtOfficeToggle');
-      if (simToggle) simToggle.checked = state.isSimulatingOffice;
-      document.getElementById('configModal').classList.remove('hidden');
-    }
-
-    function closeConfigModal() {
-      document.getElementById('configModal').classList.add('hidden');
-    }
-
-    function saveConfigSettings() {
-      CONFIG.GAS_WEB_APP_URL = document.getElementById('cfgGasUrl').value.trim() || LIVE_GAS_URL;
-      CONFIG.OFFICE_LAT = parseFloat(document.getElementById('cfgOfficeLat').value) || DEFAULT_CONFIG.OFFICE_LAT;
-      CONFIG.OFFICE_LNG = parseFloat(document.getElementById('cfgOfficeLng').value) || DEFAULT_CONFIG.OFFICE_LNG;
-      CONFIG.ALLOWED_RADIUS_METERS = parseInt(document.getElementById('cfgAllowedRadius').value, 10) || DEFAULT_CONFIG.ALLOWED_RADIUS_METERS;
-
-      try {
-        localStorage.setItem('echaar_attendance_config_v3', JSON.stringify(CONFIG));
-      } catch (e) {
-        console.warn('Could not persist config in localStorage', e);
-      }
-
-      showToast('success', 'Settings Saved', `Office: ${CONFIG.OFFICE_LAT.toFixed(6)}, ${CONFIG.OFFICE_LNG.toFixed(6)} (${CONFIG.ALLOWED_RADIUS_METERS}m)`);
-      closeConfigModal();
-      refreshUserLocation(true);
-    }
-
-    function setOfficeToCurrentLocation() {
-      if (state.userLocation && state.userLocation.lat) {
-        document.getElementById('cfgOfficeLat').value = state.userLocation.lat.toFixed(6);
-        document.getElementById('cfgOfficeLng').value = state.userLocation.lng.toFixed(6);
-        showToast('info', 'Coordinates Updated', 'Form filled with current GPS. Click Save Settings to apply.');
-      } else {
-        showToast('warning', 'GPS Not Ready', 'Acquiring location. Please try in a few seconds.');
-        refreshUserLocation(true);
       }
     }
 
