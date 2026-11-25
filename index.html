@@ -67,14 +67,83 @@
     input, select, textarea {
       font-size: 16px !important;
     }
+
+    /* Refined tactile spring button transition */
+    .btn-spring {
+      transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .btn-spring:active {
+      transform: scale(0.97);
+    }
+
+    /* Smooth view fade & slide transition */
+    @keyframes fadeInSlide {
+      from {
+        opacity: 0;
+        transform: translateY(6px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    .view-transition {
+      animation: fadeInSlide 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    /* Radar pulse for verified geofence badge */
+    @keyframes radarPulse {
+      0% {
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.45);
+      }
+      70% {
+        box-shadow: 0 0 0 8px rgba(16, 185, 129, 0);
+      }
+      100% {
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+      }
+    }
+    .radar-active {
+      animation: radarPulse 2s infinite cubic-bezier(0.4, 0, 0.6, 1);
+    }
+
+    /* Shimmer skeleton animation */
+    @keyframes shimmer {
+      100% {
+        transform: translateX(100%);
+      }
+    }
+    .skeleton-shimmer {
+      position: relative;
+      overflow: hidden;
+    }
+    .skeleton-shimmer::after {
+      position: absolute;
+      top: 0; right: 0; bottom: 0; left: 0;
+      transform: translateX(-100%);
+      background-image: linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0) 0,
+        rgba(255, 255, 255, 0.4) 20%,
+        rgba(255, 255, 255, 0.7) 60%,
+        rgba(255, 255, 255, 0)
+      );
+      animation: shimmer 1.6s infinite;
+      content: '';
+    }
   </style>
 </head>
-<body class="bg-slate-100 text-slate-800 font-sans min-h-screen flex flex-col selection:bg-amber-500 selection:text-white">
+<body class="bg-[#f8fafc] text-slate-800 font-sans min-h-screen flex flex-col selection:bg-amber-500 selection:text-white relative">
+
+  <!-- Ambient background glow mesh -->
+  <div class="fixed inset-0 pointer-events-none -z-10 overflow-hidden">
+    <div class="absolute -top-32 left-1/2 -translate-x-1/2 w-[700px] h-[350px] bg-gradient-to-br from-indigo-100/40 via-amber-100/30 to-emerald-100/30 blur-3xl opacity-70"></div>
+  </div>
 
   <!-- ========================================================================= -->
   <!-- TOP NAVIGATION BAR -->
   <!-- ========================================================================= -->
-  <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm w-full">
+  <header class="bg-white/85 backdrop-blur-md border-b border-slate-200/70 sticky top-0 z-40 shadow-xs w-full transition-all">
     <div class="max-w-6xl mx-auto px-2.5 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
       
       <!-- Logo & Brand Title -->
@@ -101,14 +170,14 @@
         
         <!-- Compact Geofence Status Pill (Tap 1x: refresh GPS, Tap 5x: Emergency Simulation) -->
         <button onclick="handleGpsPillClick()" title="GPS Status (Tap to refresh)" 
-          id="navGpsBadge" class="flex items-center space-x-1 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 transition shrink-0 cursor-pointer">
+          id="navGpsBadge" class="btn-spring flex items-center space-x-1 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 transition shrink-0 cursor-pointer">
           <i class="fa-solid fa-location-dot text-amber-500 text-[10px] sm:text-xs"></i>
           <span id="navGpsText" class="truncate max-w-[65px] sm:max-w-none">GPS Check</span>
         </button>
 
         <!-- Dynamic User / Login Button -->
         <div id="navAuthContainer" class="shrink-0">
-          <button onclick="openLoginModal()" class="flex items-center space-x-1 bg-slate-900 hover:bg-slate-800 text-white px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-semibold transition shadow-sm shrink-0">
+          <button onclick="openLoginModal()" class="btn-spring flex items-center space-x-1 bg-slate-900 hover:bg-slate-800 text-white px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-semibold transition shadow-sm shrink-0">
             <i class="fa-solid fa-user-lock text-xs"></i>
             <span class="inline sm:hidden">Login</span>
             <span class="hidden sm:inline">Dashboard</span>
@@ -214,7 +283,7 @@
             <button 
               id="btnPunchIn" 
               onclick="executePunch('punchIn')" 
-              class="w-full group relative overflow-hidden bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-bold py-3.5 px-5 rounded-2xl shadow-lg shadow-emerald-600/25 active:scale-[0.98] transition-all flex items-center justify-center space-x-2.5 text-base">
+              class="w-full group relative overflow-hidden bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-bold py-3.5 px-5 rounded-2xl shadow-lg shadow-emerald-600/25 btn-spring active:scale-[0.98] transition-all flex items-center justify-center space-x-2.5 text-base">
               <div class="w-7 h-7 rounded-xl bg-white/20 flex items-center justify-center group-hover:scale-110 transition shrink-0">
                 <i class="fa-solid fa-arrow-right-to-bracket text-base"></i>
               </div>
@@ -229,7 +298,7 @@
             <button 
               id="btnPunchOut" 
               onclick="executePunch('punchOut')" 
-              class="w-full group relative overflow-hidden bg-gradient-to-r from-amber-600 to-rose-600 hover:from-amber-500 hover:to-rose-500 text-white font-bold py-3.5 px-5 rounded-2xl shadow-lg shadow-amber-600/25 active:scale-[0.98] transition-all flex items-center justify-center space-x-2.5 text-base">
+              class="w-full group relative overflow-hidden bg-gradient-to-r from-amber-600 to-rose-600 hover:from-amber-500 hover:to-rose-500 text-white font-bold py-3.5 px-5 rounded-2xl shadow-lg shadow-amber-600/25 btn-spring active:scale-[0.98] transition-all flex items-center justify-center space-x-2.5 text-base">
               <div class="w-7 h-7 rounded-xl bg-white/20 flex items-center justify-center group-hover:scale-110 transition shrink-0">
                 <i class="fa-solid fa-arrow-right-from-bracket text-base"></i>
               </div>
@@ -240,7 +309,7 @@
             <button 
               id="btnAbsence" 
               onclick="openAbsenceModal()" 
-              class="w-full group bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-3 px-5 rounded-2xl border border-slate-200 active:scale-[0.98] transition-all flex items-center justify-center space-x-2.5 text-xs sm:text-sm">
+              class="w-full group bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-3 px-5 rounded-2xl border border-slate-200/80 btn-spring active:scale-[0.98] transition-all flex items-center justify-center space-x-2.5 text-xs sm:text-sm">
               <div class="w-6 h-6 rounded-lg bg-slate-200 text-slate-600 flex items-center justify-center group-hover:bg-slate-300 transition shrink-0">
                 <i class="fa-solid fa-calendar-xmark text-xs"></i>
               </div>
@@ -768,10 +837,10 @@
       </div>
 
       <div class="flex items-center space-x-2 pt-2">
-        <button onclick="closeAbsenceModal()" class="w-1/2 py-2 rounded-xl border border-slate-200 text-slate-600 font-semibold text-xs hover:bg-slate-50 transition">
+        <button onclick="closeAbsenceModal()" class="btn-spring w-1/2 py-2 rounded-xl border border-slate-200 text-slate-600 font-semibold text-xs hover:bg-slate-50 transition">
           Cancel
         </button>
-        <button onclick="submitAbsenceReason()" id="btnConfirmAbsence" class="w-1/2 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs shadow-md transition flex items-center justify-center space-x-1.5">
+        <button onclick="submitAbsenceReason()" id="btnConfirmAbsence" class="btn-spring w-1/2 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs shadow-md transition flex items-center justify-center space-x-1.5">
           <span>Submit Reason</span>
         </button>
       </div>
@@ -843,7 +912,7 @@
         <button 
           type="submit" 
           id="btnLoginSubmit" 
-          class="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs sm:text-sm shadow-md transition flex items-center justify-center space-x-1.5">
+          class="btn-spring w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs sm:text-sm shadow-md transition flex items-center justify-center space-x-1.5">
           <span>Authenticate & Open</span>
         </button>
       </form>
@@ -1441,13 +1510,13 @@
       textEl.textContent = text;
 
       if (status === 'success') {
-        badge.className = 'flex items-center space-x-1 px-2 sm:px-3 py-1.5 rounded-full text-[11px] sm:text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition shrink-0';
+        badge.className = 'btn-spring flex items-center space-x-1 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-300 hover:bg-emerald-100 transition shrink-0 radar-active cursor-pointer';
       } else if (status === 'warning') {
-        badge.className = 'flex items-center space-x-1 px-2 sm:px-3 py-1.5 rounded-full text-[11px] sm:text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition shrink-0';
+        badge.className = 'btn-spring flex items-center space-x-1 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition shrink-0 cursor-pointer';
       } else if (status === 'error') {
-        badge.className = 'flex items-center space-x-1 px-2 sm:px-3 py-1.5 rounded-full text-[11px] sm:text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition shrink-0';
+        badge.className = 'btn-spring flex items-center space-x-1 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition shrink-0 cursor-pointer';
       } else {
-        badge.className = 'flex items-center space-x-1 px-2 sm:px-3 py-1.5 rounded-full text-[11px] sm:text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200 hover:bg-slate-200 transition shrink-0';
+        badge.className = 'btn-spring flex items-center space-x-1 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200 hover:bg-slate-200 transition shrink-0 cursor-pointer';
       }
     }
 
@@ -2134,7 +2203,7 @@
       const container = document.getElementById('navAuthContainer');
       if (!state.currentUser) {
         container.innerHTML = `
-          <button onclick="openLoginModal()" class="flex items-center space-x-1 bg-slate-900 hover:bg-slate-800 text-white px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-semibold transition shadow-sm shrink-0">
+          <button onclick="openLoginModal()" class="btn-spring flex items-center space-x-1.5 bg-slate-900 hover:bg-slate-800 text-white px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-semibold transition shadow-sm shrink-0">
             <i class="fa-solid fa-user-lock text-xs"></i>
             <span class="inline sm:hidden">Login</span>
             <span class="hidden sm:inline">Dashboard</span>
@@ -2143,21 +2212,17 @@
       } else {
         const isMgmt = isManagementUser(state.currentUser.role, state.currentUser.employeeId);
         const targetView = isMgmt ? 'adminView' : 'employeeView';
-        const badgeColor = isMgmt ? 'bg-purple-100 text-purple-800' : 'bg-teal-100 text-teal-800';
 
         container.innerHTML = `
           <div class="flex items-center space-x-1.5">
-            <button onclick="showView('${targetView}')" class="flex items-center space-x-1 bg-slate-100 hover:bg-slate-200 text-slate-800 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition">
-              <span class="w-5 h-5 rounded-md ${badgeColor} flex items-center justify-center text-[10px] font-bold">
-                <i class="fa-solid ${isMgmt ? 'fa-user-shield' : 'fa-user-tie'}"></i>
-              </span>
-              <span class="max-w-[75px] truncate hidden sm:inline text-xs">${state.currentUser.employeeName}</span>
-              <span class="text-[9px] px-1 py-0.5 rounded ${badgeColor} font-bold uppercase">${state.currentUser.role}</span>
+            <button onclick="showView('${targetView}')" title="Go to Dashboard" class="btn-spring flex items-center space-x-1.5 bg-slate-900 hover:bg-slate-800 text-white px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-semibold transition shadow-sm shrink-0">
+              <i class="fa-solid ${isMgmt ? 'fa-chart-pie' : 'fa-calendar-days'} text-xs text-amber-400"></i>
+              <span>Dashboard</span>
             </button>
-            <button onclick="openChangePasswordModal()" title="Change Password" class="w-7 h-7 rounded-xl text-indigo-600 hover:bg-indigo-50 flex items-center justify-center transition">
+            <button onclick="openChangePasswordModal()" title="Change Password" class="btn-spring w-7 h-7 sm:w-8 sm:h-8 rounded-xl text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 border border-slate-200/70 flex items-center justify-center transition">
               <i class="fa-solid fa-key text-xs"></i>
             </button>
-            <button onclick="logout()" title="Logout" class="w-7 h-7 rounded-xl text-rose-600 hover:bg-rose-50 flex items-center justify-center transition">
+            <button onclick="logout()" title="Logout" class="btn-spring w-7 h-7 sm:w-8 sm:h-8 rounded-xl text-rose-600 hover:text-rose-700 hover:bg-rose-50 border border-slate-200/70 flex items-center justify-center transition">
               <i class="fa-solid fa-right-from-bracket text-xs"></i>
             </button>
           </div>
@@ -3460,10 +3525,15 @@
      * -------------------------------------------------------------------------
      */
     function showView(viewId) {
-      document.querySelectorAll('.view-panel').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.view-panel').forEach(el => {
+        el.classList.add('hidden');
+        el.classList.remove('view-transition');
+      });
       const target = document.getElementById(viewId);
       if (target) {
         target.classList.remove('hidden');
+        void target.offsetWidth;
+        target.classList.add('view-transition');
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     }
