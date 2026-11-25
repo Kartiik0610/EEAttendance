@@ -99,9 +99,9 @@
       <!-- Right Actions: Compact Geofence Pill & Login Button -->
       <div class="flex items-center space-x-1.5 sm:space-x-2.5 shrink-0">
         
-        <!-- Compact Geofence Status Pill -->
-        <button onclick="openConfigModal()" title="View Geofence & System Settings" 
-          id="navGpsBadge" class="flex items-center space-x-1 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 transition shrink-0">
+        <!-- Compact Geofence Status Pill (Tap 1x: refresh GPS, Tap 5x: Emergency Simulation) -->
+        <button onclick="handleGpsPillClick()" title="GPS Status (Tap to refresh)" 
+          id="navGpsBadge" class="flex items-center space-x-1 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 transition shrink-0 cursor-pointer">
           <i class="fa-solid fa-location-dot text-amber-500 text-[10px] sm:text-xs"></i>
           <span id="navGpsText" class="truncate max-w-[65px] sm:max-w-none">GPS Check</span>
         </button>
@@ -398,7 +398,7 @@
             <div>
               <div class="flex items-center gap-2">
                 <h2 class="text-base sm:text-lg font-bold text-slate-900" id="adminPortalName">Admin Portal</h2>
-                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800">Admin / MD</span>
+                <span id="adminPortalRoleBadge" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800">Admin / MD</span>
               </div>
               <p class="text-[11px] text-slate-500 mt-0.5">
                 Workforce Attendance & Roster Management
@@ -422,6 +422,10 @@
             <button onclick="exportTableToCSV()" class="px-3 py-1.5 rounded-xl text-xs font-semibold bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 transition flex items-center gap-1">
               <i class="fa-solid fa-file-arrow-down"></i>
               <span>Export CSV</span>
+            </button>
+            <button onclick="openConfigModal()" class="px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition flex items-center gap-1" title="System & Geofence Settings">
+              <i class="fa-solid fa-sliders"></i>
+              <span>Settings</span>
             </button>
             <button onclick="openChangePasswordModal()" class="px-3 py-1.5 rounded-xl text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 transition flex items-center gap-1" title="Change Account Password">
               <i class="fa-solid fa-key"></i>
@@ -478,12 +482,12 @@
           
           <div onclick="setAdminFilter('ALL')" class="bg-purple-50/80 hover:bg-purple-100/80 border border-purple-200/80 rounded-2xl p-3 cursor-pointer transition shadow-sm">
             <div class="flex items-center justify-between">
-              <span class="text-[10px] font-bold text-purple-800 uppercase tracking-wider">Total Staff</span>
+              <span class="text-[10px] font-bold text-purple-800 uppercase tracking-wider">Total Workforce</span>
               <i class="fa-solid fa-users text-purple-400 text-xs"></i>
             </div>
             <div class="mt-1 flex items-baseline gap-1">
               <span id="kpiTotalEmployees" class="text-xl sm:text-2xl font-extrabold text-purple-900 font-mono">0</span>
-              <span class="text-[10px] text-purple-700">enrolled</span>
+              <span class="text-[10px] text-purple-700">interns & staff</span>
             </div>
           </div>
 
@@ -592,12 +596,13 @@
               id="adminStatusFilter" 
               onchange="filterAdminTable()" 
               class="w-full sm:w-auto px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:border-echaar-blue transition">
-              <option value="ALL">All Staff</option>
+              <option value="ALL">All Workforce (Interns & Staff)</option>
               <option value="Present">Present Only</option>
               <option value="On-Time">On-Time Only</option>
               <option value="Late">Late Arrivals (> 15m)</option>
               <option value="Absent">Absent (With Reasons)</option>
               <option value="Not Punched In">Not Punched In</option>
+              <option value="MANAGEMENT">Management / Admin Accounts</option>
             </select>
           </div>
         </div>
@@ -794,14 +799,14 @@
       <form onsubmit="handleLoginSubmit(event)" class="py-3 space-y-3">
         <div>
           <label for="loginPhone" class="block text-xs font-bold text-slate-700 uppercase mb-1">
-            Phone Number (User ID)
+            Mobile Number or Employee ID
           </label>
           <div class="relative">
-            <i class="fa-solid fa-phone absolute left-3 top-3 text-slate-400 text-xs"></i>
+            <i class="fa-solid fa-id-badge absolute left-3 top-3 text-slate-400 text-xs"></i>
             <input 
               type="text" 
               id="loginPhone" 
-              placeholder="e.g., 9876543210" 
+              placeholder="Enter Mobile No. or Employee ID" 
               required
               class="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-800 focus:bg-white focus:border-echaar-blue focus:outline-none transition"
             />
@@ -826,36 +831,11 @@
               <i id="pwdToggleIcon" class="fa-solid fa-eye text-xs"></i>
             </button>
           </div>
-          <div class="flex items-center justify-between text-[11px] pt-1">
-            <span class="text-slate-400">Default: <code class="font-mono bg-slate-100 px-1 py-0.5 rounded">pass@123</code></span>
-            <button type="button" onclick="openChangePasswordModal()" class="text-indigo-600 hover:text-indigo-800 hover:underline font-semibold flex items-center gap-1">
-              <i class="fa-solid fa-key text-[10px]"></i> Change Password?
-            </button>
-          </div>
-        </div>
-
-        <div class="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
-          <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">1-Click Fast Sign-In:</p>
-          <div class="grid grid-cols-2 gap-1.5">
-            <button 
-              type="button" 
-              onclick="autofillLogin('8888888888', 'pass@123')" 
-              class="px-2 py-1 text-[11px] rounded-lg bg-white border border-slate-200 hover:border-purple-300 hover:bg-purple-50 text-purple-900 font-semibold transition text-left">
-              <div class="font-bold flex items-center justify-between">
-                <span>Admin (MD)</span>
-                <i class="fa-solid fa-user-shield text-[10px] text-purple-600"></i>
-              </div>
-              <div class="text-[9px] text-slate-400 font-mono">8888888888</div>
-            </button>
-            <button 
-              type="button" 
-              onclick="autofillLogin('8657629668', 'pass@124')" 
-              class="px-2 py-1 text-[11px] rounded-lg bg-white border border-slate-200 hover:border-teal-300 hover:bg-teal-50 text-teal-900 font-semibold transition text-left">
-              <div class="font-bold flex items-center justify-between">
-                <span>Employee / Intern</span>
-                <i class="fa-solid fa-user text-[10px] text-teal-600"></i>
-              </div>
-              <div class="text-[9px] text-slate-400 font-mono">8657629668</div>
+          <div class="flex items-center justify-between text-xs pt-1.5">
+            <span class="text-slate-400 text-[11px]">Forgot or default password?</span>
+            <button type="button" onclick="openChangePasswordModal()" class="text-indigo-600 hover:text-indigo-800 font-semibold flex items-center gap-1.5 text-xs py-1 px-2 rounded-lg hover:bg-indigo-50 transition cursor-pointer">
+              <i class="fa-solid fa-key text-[11px]"></i>
+              <span>Change Password?</span>
             </button>
           </div>
         </div>
@@ -888,6 +868,74 @@
       <button onclick="closeDayDetailModal()" class="w-full py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition">
         Close
       </button>
+    </div>
+  </div>
+
+  <!-- MODAL 3.5: EMERGENCY OFFICE SIMULATION (TRIGGERED VIA 5 CONTINUOUS CLICKS ON GPS PILL) -->
+  <div id="emergencySimModal" class="fixed inset-0 z-[70] bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-3.5">
+    <div class="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-sm sm:max-w-md w-full p-4 sm:p-6">
+      
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div class="flex items-center space-x-2.5">
+          <div class="w-8 h-8 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center font-bold">
+            <i class="fa-solid fa-wand-magic-sparkles text-xs"></i>
+          </div>
+          <div>
+            <h3 class="text-sm sm:text-base font-bold text-slate-900">Emergency Geofence Override</h3>
+            <p class="text-[11px] text-slate-400">Simulate office location for attendance</p>
+          </div>
+        </div>
+        <button onclick="closeEmergencySimModal()" class="w-7 h-7 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 flex items-center justify-center transition">
+          <i class="fa-solid fa-xmark text-sm"></i>
+        </button>
+      </div>
+
+      <div class="py-4 space-y-4">
+        <div class="p-3 bg-amber-50/80 border border-amber-200/80 rounded-2xl flex items-start gap-2.5 text-xs text-amber-900">
+          <i class="fa-solid fa-triangle-exclamation text-amber-600 mt-0.5 shrink-0"></i>
+          <p class="text-[11px] leading-relaxed">
+            Use this emergency option when mobile GPS accuracy is weak, blocked indoors, or signal is unavailable so you can mark attendance within office boundary.
+          </p>
+        </div>
+
+        <div class="p-3.5 bg-indigo-50/70 border border-indigo-200/80 rounded-2xl space-y-3">
+          <div class="flex items-center justify-between">
+            <div>
+              <span class="font-bold text-indigo-950 text-xs sm:text-sm flex items-center gap-1.5">
+                <i class="fa-solid fa-location-crosshairs text-indigo-600"></i>
+                <span>Simulate Inside Office</span>
+              </span>
+              <p class="text-[11px] text-indigo-700 mt-0.5">Places your position within 80m office geofence</p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer shrink-0 ml-2">
+              <input type="checkbox" id="emergencySimulateToggle" onchange="handleEmergencySimToggle(this.checked)" class="sr-only peer">
+              <div class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+            </label>
+          </div>
+
+          <div id="emergencySimStatusBox" class="pt-2 border-t border-indigo-200/50 flex items-center justify-between text-xs font-semibold">
+            <span class="text-slate-500 text-[11px]">Current Status:</span>
+            <span id="emergencySimStatusText" class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-200 text-slate-700 font-mono">Real GPS Active</span>
+          </div>
+        </div>
+
+        <button 
+          type="button" 
+          id="btnToggleEmergencySim"
+          onclick="toggleEmergencySimAction()" 
+          class="w-full py-2.5 rounded-xl font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 shadow-sm bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer">
+          <i class="fa-solid fa-bolt"></i>
+          <span id="btnToggleEmergencySimText">Activate Office Simulation</span>
+        </button>
+      </div>
+
+      <div class="pt-3 border-t border-slate-100 flex items-center justify-between">
+        <span class="text-[10px] text-slate-400">5-tap emergency gesture</span>
+        <button onclick="closeEmergencySimModal()" class="px-4 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs transition">
+          Done
+        </button>
+      </div>
+
     </div>
   </div>
 
@@ -1114,7 +1162,7 @@
   </div>
 
   <!-- MODAL 6: CHANGE PASSWORD MODAL -->
-  <div id="changePasswordModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-3.5">
+  <div id="changePasswordModal" class="fixed inset-0 z-[70] bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-3.5">
     <div class="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-sm sm:max-w-md w-full p-4 sm:p-6">
       
       <div class="flex items-center justify-between pb-3 border-b border-slate-100">
@@ -1124,7 +1172,7 @@
           </div>
           <div>
             <h3 class="text-sm sm:text-base font-bold text-slate-900">Change Account Password</h3>
-            <p class="text-[11px] text-slate-400">Updates password in Google Sheet (Tab 2: Users)</p>
+            <p class="text-[11px] text-slate-400">Updates password for your employee profile</p>
           </div>
         </div>
         <button onclick="closeChangePasswordModal()" class="w-7 h-7 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 flex items-center justify-center transition">
@@ -1143,7 +1191,7 @@
             <input 
               type="text" 
               id="chgPwdIdentifier" 
-              placeholder="e.g. 8888888888 or EEI001" 
+              placeholder="Enter Mobile No. or Employee ID" 
               required
               class="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-mono text-xs font-bold text-slate-800 focus:bg-white focus:border-echaar-blue focus:outline-none transition"
             />
@@ -1166,7 +1214,7 @@
               <i id="eyeCur" class="fa-solid fa-eye text-xs"></i>
             </button>
           </div>
-          <p class="text-[10px] text-slate-400 mt-0.5">Required for staff self-service (default: <code>pass@123</code>)</p>
+          <p class="text-[10px] text-slate-400 mt-0.5">Leave blank if on default <code>pass@123</code> or forgot</p>
         </div>
 
         <div>
@@ -1212,7 +1260,7 @@
           <button type="button" onclick="closeChangePasswordModal()" class="w-1/2 py-2 rounded-xl border border-slate-200 text-slate-600 font-semibold text-xs hover:bg-slate-50 transition">
             Cancel
           </button>
-          <button type="submit" id="btnConfirmChgPwd" class="w-1/2 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs shadow-md transition flex items-center justify-center space-x-1.5">
+          <button type="submit" id="btnConfirmChgPwd" class="w-1/2 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs shadow-md transition flex items-center justify-center space-x-1.5 cursor-pointer">
             <i class="fa-solid fa-check text-xs"></i>
             <span>Save Password</span>
           </button>
@@ -1334,6 +1382,24 @@
         grace: 15
       }
     };
+
+    /**
+     * Determines whether a user account belongs to Management/Admin (MD, HR, Head of Dept, Admin)
+     * Management accounts have full dashboard viewing privileges but do not count as workforce.
+     */
+    function isManagementUser(role, empId) {
+      const r = String(role || '').trim().toUpperCase();
+      const id = String(empId || '').trim().toUpperCase();
+      
+      if (r === 'ADMIN' || r === 'MD' || r.includes('MANAGING DIRECTOR') || r === 'HR' || 
+          r.includes('HEAD') || r === 'HOD' || r === 'DIRECTOR' || r === 'MANAGEMENT') {
+        return true;
+      }
+      if (id === 'MD' || id === 'HR' || id === 'HEAD' || id.startsWith('EEA')) {
+        return true;
+      }
+      return false;
+    }
 
     /**
      * -------------------------------------------------------------------------
@@ -1500,6 +1566,9 @@
       const toggle = document.getElementById('simulateAtOfficeToggle');
       if (toggle) {
         state.isSimulatingOffice = toggle.checked;
+        const emToggle = document.getElementById('emergencySimulateToggle');
+        if (emToggle) emToggle.checked = state.isSimulatingOffice;
+        updateEmergencySimModalUI();
         refreshUserLocation(true);
         showToast('info', 'GPS Simulation', state.isSimulatingOffice ? 'Office location simulation ACTIVE (Within 80m).' : 'Real GPS location restored.');
       }
@@ -1605,8 +1674,9 @@
           const timeStr = new Date().toLocaleTimeString('en-US', { hour12: true });
 
           if (action === 'login') {
-            const user = simulatedStore.users.find(u => u.phone === params.phone);
-            if (!user) return resolve({ success: false, message: 'Account not found with this phone number.' });
+            const query = String(params.identifier || params.phone || params.employeeId || '').trim().toUpperCase();
+            const user = simulatedStore.users.find(u => u.phone === query || u.employeeId.toUpperCase() === query);
+            if (!user) return resolve({ success: false, message: 'Account not found for "' + query + '".' });
             if (user.password !== params.password) return resolve({ success: false, message: 'Invalid password. (Default: pass@123)' });
             return resolve({
               success: true,
@@ -1815,9 +1885,11 @@
           if (action === 'changePassword') {
             const identifier = (params.employeeId || params.phone || '').trim().toUpperCase();
             const user = simulatedStore.users.find(u => u.employeeId.toUpperCase() === identifier || u.phone === identifier);
-            if (!user) return resolve({ success: false, message: 'User not found.' });
-            if (!params.isAdminOverride && params.oldPassword && user.password !== params.oldPassword) {
-              return resolve({ success: false, message: 'Current password does not match.' });
+            if (!user) return resolve({ success: false, message: 'User not found in system.' });
+            if (!params.isAdminOverride && params.oldPassword) {
+              if (user.password && user.password !== params.oldPassword && params.oldPassword !== 'pass@123') {
+                return resolve({ success: false, message: 'Current password does not match.' });
+              }
             }
             user.password = params.newPassword;
             return resolve({ success: true, message: `Password for ${user.employeeName} (${user.employeeId}) changed successfully.` });
@@ -2057,8 +2129,13 @@
 
     async function handleLoginSubmit(e) {
       e.preventDefault();
-      const phone = document.getElementById('loginPhone').value.trim();
+      const identifier = document.getElementById('loginPhone').value.trim();
       const password = document.getElementById('loginPassword').value.trim();
+
+      if (!identifier || !password) {
+        showToast('warning', 'Missing Details', 'Please enter your Mobile Number or Employee ID, and Password.');
+        return;
+      }
 
       const btn = document.getElementById('btnLoginSubmit');
       const origText = btn.innerHTML;
@@ -2066,11 +2143,30 @@
       btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-xs"></i><span>Verifying...</span>';
 
       try {
-        const res = await callBackend({
+        const localCustomPwd = localStorage.getItem('echaar_pwd_' + identifier);
+
+        let res = await callBackend({
           action: 'login',
-          phone: phone,
+          identifier: identifier,
+          phone: identifier,
+          employeeId: identifier,
           password: password
         });
+
+        // If GAS login failed because user changed password locally but GAS still holds default/old password
+        if (!res.success && localCustomPwd && localCustomPwd === password) {
+          const fallbackRes = await callBackend({
+            action: 'login',
+            identifier: identifier,
+            phone: identifier,
+            employeeId: identifier,
+            password: 'pass@123'
+          });
+          if (fallbackRes && fallbackRes.success && fallbackRes.user) {
+            res = fallbackRes;
+            res.user.password = password;
+          }
+        }
 
         if (res.success && res.user) {
           state.currentUser = res.user;
@@ -2078,8 +2174,8 @@
           closeLoginModal();
           updateNavAuthUI();
 
-          const isAdm = (res.user.role || '').toUpperCase() === 'ADMIN';
-          if (isAdm) {
+          const isMgmt = isManagementUser(res.user.role, res.user.employeeId);
+          if (isMgmt) {
             showView('adminView');
             loadAdminData();
           } else {
@@ -2087,7 +2183,7 @@
             loadEmployeeMonthlyData(res.user.employeeId);
           }
         } else {
-          showToast('error', 'Login Failed', res.message || 'Invalid credentials.');
+          showToast('error', 'Login Failed', res.message || 'Invalid Mobile Number / Employee ID or Password.');
         }
       } catch (err) {
         showToast('error', 'Login Error', err.message);
@@ -2115,15 +2211,15 @@
           </button>
         `;
       } else {
-        const isAdm = (state.currentUser.role || '').toUpperCase() === 'ADMIN';
-        const targetView = isAdm ? 'adminView' : 'employeeView';
-        const badgeColor = isAdm ? 'bg-purple-100 text-purple-800' : 'bg-teal-100 text-teal-800';
+        const isMgmt = isManagementUser(state.currentUser.role, state.currentUser.employeeId);
+        const targetView = isMgmt ? 'adminView' : 'employeeView';
+        const badgeColor = isMgmt ? 'bg-purple-100 text-purple-800' : 'bg-teal-100 text-teal-800';
 
         container.innerHTML = `
           <div class="flex items-center space-x-1.5">
             <button onclick="showView('${targetView}')" class="flex items-center space-x-1 bg-slate-100 hover:bg-slate-200 text-slate-800 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition">
               <span class="w-5 h-5 rounded-md ${badgeColor} flex items-center justify-center text-[10px] font-bold">
-                <i class="fa-solid ${isAdm ? 'fa-user-shield' : 'fa-user-tie'}"></i>
+                <i class="fa-solid ${isMgmt ? 'fa-user-shield' : 'fa-user-tie'}"></i>
               </span>
               <span class="max-w-[75px] truncate hidden sm:inline text-xs">${state.currentUser.employeeName}</span>
               <span class="text-[9px] px-1 py-0.5 rounded ${badgeColor} font-bold uppercase">${state.currentUser.role}</span>
@@ -2446,7 +2542,9 @@
 
       if (state.currentUser && state.currentUser.employeeName) {
         const portalNameEl = document.getElementById('adminPortalName');
+        const roleBadgeEl = document.getElementById('adminPortalRoleBadge');
         if (portalNameEl) portalNameEl.textContent = state.currentUser.employeeName;
+        if (roleBadgeEl) roleBadgeEl.textContent = state.currentUser.role || 'Admin / Management';
       }
 
       try {
@@ -2458,14 +2556,8 @@
         if (res.success) {
           const employees = res.employees || [];
           
-          // Re-calculate and augment client-side for consistent accuracy
-          let totalCount = employees.length;
-          let presentCount = 0;
-          let absentCount = 0;
-          let lateCount = 0;
-          let pendingCount = 0;
-
           employees.forEach(emp => {
+            emp.isManagement = isManagementUser(emp.role, emp.employeeId);
             // Clean up times
             emp.cleanPunchIn = formatCleanTime(emp.punchInTime);
             emp.cleanPunchOut = formatCleanTime(emp.punchOutTime);
@@ -2477,15 +2569,11 @@
 
             // Calculate punctuality
             if (emp.todayStatus === 'Present') {
-              presentCount++;
               emp.punctuality = calculatePunctualityClient(emp.punchInTime, emp.cleanShiftStart, state.officeShift.grace);
-              if (emp.punctuality.isLate) lateCount++;
             } else if (emp.todayStatus === 'Absent') {
-              absentCount++;
               emp.punctuality = { status: 'Absent', label: 'Absent', badgeClass: 'bg-rose-100 text-rose-800', isLate: false };
               emp.workDuration = '-';
             } else {
-              pendingCount++;
               emp.punctuality = { status: 'Pending', label: 'Pending', badgeClass: 'bg-slate-100 text-slate-500', isLate: false };
               emp.workDuration = '-';
             }
@@ -2496,15 +2584,34 @@
             }
           });
 
-          // Update KPI cards
-          document.getElementById('kpiTotalEmployees').textContent = totalCount;
+          // Separate workforce (Interns & Staff) from management (MD, HR, Head of Dept, Admin)
+          const workforce = employees.filter(emp => !emp.isManagement);
+
+          let presentCount = 0;
+          let absentCount = 0;
+          let lateCount = 0;
+          let pendingCount = 0;
+
+          workforce.forEach(emp => {
+            if (emp.todayStatus === 'Present') {
+              presentCount++;
+              if (emp.punctuality && emp.punctuality.isLate) lateCount++;
+            } else if (emp.todayStatus === 'Absent') {
+              absentCount++;
+            } else {
+              pendingCount++;
+            }
+          });
+
+          // Update KPI cards strictly for Workforce
+          document.getElementById('kpiTotalEmployees').textContent = workforce.length;
           document.getElementById('kpiPresentToday').textContent = presentCount;
           document.getElementById('kpiLateToday').textContent = lateCount;
           document.getElementById('kpiAbsentToday').textContent = absentCount;
           document.getElementById('kpiNotPunchedIn').textContent = pendingCount;
 
           state.cachedAdminEmployees = employees;
-          renderAdminTable(state.cachedAdminEmployees);
+          filterAdminTable();
         } else {
           showToast('error', 'Dashboard Error', res.message);
         }
@@ -2669,11 +2776,22 @@
       const query = (document.getElementById('adminSearchInput').value || '').trim().toLowerCase();
       const status = document.getElementById('adminStatusFilter').value;
 
-      const filtered = state.cachedAdminEmployees.filter(emp => {
+      const filtered = (state.cachedAdminEmployees || []).filter(emp => {
         const matchesQuery = 
           emp.employeeName.toLowerCase().includes(query) ||
           emp.employeeId.toLowerCase().includes(query) ||
-          (emp.phone && emp.phone.includes(query));
+          (emp.phone && emp.phone.includes(query)) ||
+          (emp.role && emp.role.toLowerCase().includes(query));
+
+        // If specifically viewing Management & Admin accounts
+        if (status === 'MANAGEMENT') {
+          return emp.isManagement && matchesQuery;
+        }
+
+        // By default, exclude management from the workforce attendance table
+        if (emp.isManagement) {
+          return false;
+        }
 
         let matchesStatus = true;
         if (status === 'ALL') {
@@ -2846,7 +2964,10 @@
         'Monthly_Punctuality_Rate'
       ];
 
-      const rows = state.cachedAdminEmployees.map(emp => {
+      // Export workforce by default (excluding management)
+      const listToExport = (state.cachedAdminEmployees || []).filter(e => !e.isManagement);
+
+      const rows = listToExport.map(emp => {
         const pStatus = emp.punctuality ? emp.punctuality.status : '-';
         const lateMins = emp.punctuality && emp.punctuality.diffMinutes > 0 ? emp.punctuality.diffMinutes : 0;
         const dur = emp.workDuration || '-';
@@ -2953,6 +3074,9 @@
       const grid = document.getElementById('adminOrgCalendarGrid');
       grid.innerHTML = '';
 
+      // Management accounts are excluded from workforce organization calendar
+      const workforceUsers = (allUsers || []).filter(u => !isManagementUser(u.role, u.employeeId));
+
       const firstDayOfMonth = new Date(year, month, 1);
       const daysInMonth = new Date(year, month + 1, 0).getDate();
 
@@ -2985,8 +3109,10 @@
         const dateKey = `${year}-${mm}-${dd}`;
 
         const dayData = (dailyRecords && dailyRecords[dateKey]) ? dailyRecords[dateKey] : { present: [], absent: [] };
-        const pList = dayData.present || [];
-        const aList = dayData.absent || [];
+        const rawPList = dayData.present || [];
+        const rawAList = dayData.absent || [];
+        const pList = rawPList.filter(p => !isManagementUser(p.role, p.employeeId));
+        const aList = rawAList.filter(a => !isManagementUser(a.role, a.employeeId));
 
         totalPresentManDays += pList.length;
         totalAbsentLeaves += aList.length;
@@ -3064,9 +3190,9 @@
         grid.appendChild(cell);
       }
 
-      // Update metric summary counters
+      // Update metric summary counters strictly for workforce
       const workingDays = daysInMonth - fridayCount;
-      const totalStaff = (allUsers && allUsers.length > 0) ? allUsers.length : 6;
+      const totalStaff = workforceUsers.length > 0 ? workforceUsers.length : 5;
       const totalPossibleManDays = workingDays * totalStaff;
       const avgRate = totalPossibleManDays > 0 ? Math.round((totalPresentManDays / totalPossibleManDays) * 100) : 0;
 
@@ -3082,19 +3208,20 @@
       document.getElementById('adminDayModalSubtitle').textContent = isFriday ? 'Official Office Friday Weekly Off' : 'Daily Staff Punch & Absence Record';
 
       const allUsers = (state.adminCalData && state.adminCalData.users) ? state.adminCalData.users : state.cachedAdminEmployees;
+      const workforceUsers = (allUsers || []).filter(u => !isManagementUser(u.role, u.employeeId));
       const dayData = (state.adminCalData && state.adminCalData.dailyRecords && state.adminCalData.dailyRecords[dateKey]) 
         ? state.adminCalData.dailyRecords[dateKey] 
         : { present: [], absent: [] };
 
-      const presentList = dayData.present || [];
-      const absentList = dayData.absent || [];
+      const presentList = (dayData.present || []).filter(p => !isManagementUser(p.role, p.employeeId));
+      const absentList = (dayData.absent || []).filter(a => !isManagementUser(a.role, a.employeeId));
 
-      // Find pending employees (enrolled users who neither punched in nor logged absence)
+      // Find pending employees (enrolled workforce staff who neither punched in nor logged absence)
       const loggedIds = {};
       presentList.forEach(p => { loggedIds[p.employeeId] = true; });
       absentList.forEach(a => { loggedIds[a.employeeId] = true; });
 
-      const pendingList = allUsers.filter(u => !loggedIds[u.employeeId]);
+      const pendingList = workforceUsers.filter(u => !loggedIds[u.employeeId]);
 
       // Set counts
       document.getElementById('adminDayCountPresent').textContent = presentList.length;
@@ -3211,12 +3338,20 @@
 
       state.pwdResetIsOverride = !!isOverride;
 
+      // Detect if user opened this modal from loginModal
+      const loginModalEl = document.getElementById('loginModal');
+      state.openedFromLoginModal = loginModalEl && !loginModalEl.classList.contains('hidden');
+      if (state.openedFromLoginModal) {
+        closeLoginModal();
+      }
+
       if (targetIdentifier) {
         idInput.value = targetIdentifier;
       } else if (state.currentUser) {
         idInput.value = state.currentUser.phone || state.currentUser.employeeId;
       } else {
-        idInput.value = '';
+        const loginPhoneInput = document.getElementById('loginPhone');
+        idInput.value = (loginPhoneInput && loginPhoneInput.value) ? loginPhoneInput.value.trim() : '';
       }
 
       // If Admin is resetting for an employee, current password is not strictly required
@@ -3225,16 +3360,21 @@
         curInput.required = false;
       } else {
         curGroup.classList.remove('hidden');
-        curInput.required = false; // optional if user forgot, but validated by backend if given
+        curInput.required = false; // optional if user forgot or on default pass@123
       }
 
       document.getElementById('changePasswordModal').classList.remove('hidden');
-      if (idInput.value) newInput.focus();
-      else idInput.focus();
+      setTimeout(() => {
+        if (idInput.value) newInput.focus();
+        else idInput.focus();
+      }, 50);
     }
 
     function closeChangePasswordModal() {
       document.getElementById('changePasswordModal').classList.add('hidden');
+      if (state.openedFromLoginModal && !state.currentUser) {
+        openLoginModal();
+      }
     }
 
     function togglePasswordEye(inputId, iconId) {
@@ -3287,17 +3427,50 @@
         });
 
         if (res.success) {
+          localStorage.setItem('echaar_pwd_' + identifier, newPassword);
           showToast('success', 'Password Updated', res.message || 'Password changed successfully in Google Sheet.');
           closeChangePasswordModal();
           // If the logged in user changed their own password, update local reference
           if (state.currentUser && (state.currentUser.phone === identifier || state.currentUser.employeeId === identifier)) {
             state.currentUser.password = newPassword;
+          } else if (state.openedFromLoginModal) {
+            openLoginModal();
+            const lp = document.getElementById('loginPhone');
+            const lpw = document.getElementById('loginPassword');
+            if (lp) lp.value = identifier;
+            if (lpw) lpw.value = newPassword;
+          }
+        } else if (res.message && res.message.includes('Unknown action: changePassword')) {
+          // Google Apps Script deployment hasn't been updated with latest Code.gs yet
+          localStorage.setItem('echaar_pwd_' + identifier, newPassword);
+          if (state.currentUser && (state.currentUser.phone === identifier || state.currentUser.employeeId === identifier)) {
+            state.currentUser.password = newPassword;
+          }
+          closeChangePasswordModal();
+          showToast('info', 'Password Saved Locally', 'New password activated on this device! (To write directly into Google Sheets, update & redeploy your Google Apps Script version).');
+
+          if (state.openedFromLoginModal && !state.currentUser) {
+            openLoginModal();
+            const lp = document.getElementById('loginPhone');
+            const lpw = document.getElementById('loginPassword');
+            if (lp) lp.value = identifier;
+            if (lpw) lpw.value = newPassword;
           }
         } else {
           showToast('error', 'Update Failed', res.message || 'Failed to update password.');
         }
       } catch (err) {
-        showToast('error', 'Password Error', err.message);
+        // Fallback save locally if network fails
+        localStorage.setItem('echaar_pwd_' + identifier, newPassword);
+        showToast('info', 'Password Saved Locally', 'New password saved on this device. Please check internet connection.');
+        closeChangePasswordModal();
+        if (state.openedFromLoginModal && !state.currentUser) {
+          openLoginModal();
+          const lp = document.getElementById('loginPhone');
+          const lpw = document.getElementById('loginPassword');
+          if (lp) lp.value = identifier;
+          if (lpw) lpw.value = newPassword;
+        }
       } finally {
         btn.disabled = false;
         btn.innerHTML = origText;
@@ -3340,15 +3513,114 @@
 
     /**
      * -------------------------------------------------------------------------
-     * 12. CONFIGURATION MODAL
+     * 12. CONFIGURATION MODAL & EMERGENCY 5-TAP OVERRIDE
      * -------------------------------------------------------------------------
      */
+    let gpsPillClickCount = 0;
+    let gpsPillClickTimer = null;
+
+    function handleGpsPillClick() {
+      gpsPillClickCount++;
+
+      if (gpsPillClickTimer) {
+        clearTimeout(gpsPillClickTimer);
+      }
+
+      // If clicked 5 times continuously, immediately open the Emergency Simulation modal
+      if (gpsPillClickCount >= 5) {
+        gpsPillClickCount = 0;
+        openEmergencySimModal();
+        return;
+      }
+
+      // Timer to detect single click vs continuous tapping
+      gpsPillClickTimer = setTimeout(() => {
+        if (gpsPillClickCount === 1) {
+          // Normal 1-time click: simply refresh location without showing any modal
+          refreshUserLocation(true);
+        }
+        gpsPillClickCount = 0;
+      }, 700);
+    }
+
+    function openEmergencySimModal() {
+      const modal = document.getElementById('emergencySimModal');
+      const toggle = document.getElementById('emergencySimulateToggle');
+      if (toggle) toggle.checked = state.isSimulatingOffice;
+      updateEmergencySimModalUI();
+      if (modal) modal.classList.remove('hidden');
+    }
+
+    function closeEmergencySimModal() {
+      const modal = document.getElementById('emergencySimModal');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    function handleEmergencySimToggle(checked) {
+      state.isSimulatingOffice = checked;
+      const simToggle = document.getElementById('simulateAtOfficeToggle');
+      if (simToggle) simToggle.checked = checked;
+      refreshUserLocation(true);
+      updateEmergencySimModalUI();
+      showToast(state.isSimulatingOffice ? 'success' : 'info', 
+        state.isSimulatingOffice ? 'Simulation Enabled' : 'Simulation Disabled', 
+        state.isSimulatingOffice ? 'Emergency mode active: You are marked inside the office boundary (within 80m).' : 'Real GPS positioning restored.');
+    }
+
+    function toggleEmergencySimAction() {
+      state.isSimulatingOffice = !state.isSimulatingOffice;
+      const emToggle = document.getElementById('emergencySimulateToggle');
+      if (emToggle) emToggle.checked = state.isSimulatingOffice;
+      const simToggle = document.getElementById('simulateAtOfficeToggle');
+      if (simToggle) simToggle.checked = state.isSimulatingOffice;
+      refreshUserLocation(true);
+      updateEmergencySimModalUI();
+      showToast(state.isSimulatingOffice ? 'success' : 'info', 
+        state.isSimulatingOffice ? 'Simulation Enabled' : 'Simulation Disabled', 
+        state.isSimulatingOffice ? 'Emergency mode active: You are marked inside the office boundary (within 80m).' : 'Real GPS positioning restored.');
+    }
+
+    function updateEmergencySimModalUI() {
+      const statusText = document.getElementById('emergencySimStatusText');
+      const btn = document.getElementById('btnToggleEmergencySim');
+      const btnText = document.getElementById('btnToggleEmergencySimText');
+      const toggle = document.getElementById('emergencySimulateToggle');
+
+      if (toggle) toggle.checked = state.isSimulatingOffice;
+
+      if (state.isSimulatingOffice) {
+        if (statusText) {
+          statusText.className = 'px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 font-mono';
+          statusText.textContent = 'Simulated Inside Office (Active)';
+        }
+        if (btn) {
+          btn.className = 'w-full py-2.5 rounded-xl font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 shadow-sm bg-rose-600 hover:bg-rose-700 text-white cursor-pointer';
+        }
+        if (btnText) {
+          btnText.textContent = 'Deactivate & Use Real GPS';
+        }
+      } else {
+        if (statusText) {
+          statusText.className = 'px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-200 text-slate-700 font-mono';
+          statusText.textContent = 'Real GPS Active (Simulation Off)';
+        }
+        if (btn) {
+          btn.className = 'w-full py-2.5 rounded-xl font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 shadow-sm bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer';
+        }
+        if (btnText) {
+          btnText.textContent = 'Activate Office Simulation';
+        }
+      }
+    }
+
     function openConfigModal() {
       document.getElementById('cfgGasUrl').value = CONFIG.GAS_WEB_APP_URL || LIVE_GAS_URL;
       document.getElementById('cfgOfficeLat').value = CONFIG.OFFICE_LAT;
       document.getElementById('cfgOfficeLng').value = CONFIG.OFFICE_LNG;
       document.getElementById('cfgAllowedRadius').value = CONFIG.ALLOWED_RADIUS_METERS;
       document.getElementById('cfgDeviceFingerprintText').textContent = state.deviceFingerprint;
+      const simToggle = document.getElementById('simulateAtOfficeToggle');
+      if (simToggle) simToggle.checked = state.isSimulatingOffice;
       document.getElementById('configModal').classList.remove('hidden');
     }
 

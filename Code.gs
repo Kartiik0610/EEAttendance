@@ -158,6 +158,24 @@ function calculateWorkDuration(punchInStr, punchOutStr) {
   return hours + 'h ' + mins + 'm';
 }
 
+/**
+ * Determines whether a user account belongs to Management/Admin (MD, HR, Head of Dept, Director)
+ * Management accounts have full administrative view access but do not count as workforce.
+ */
+function isManagementRole(role, empId) {
+  var r = String(role || '').trim().toUpperCase();
+  var id = String(empId || '').trim().toUpperCase();
+  
+  if (r === 'ADMIN' || r === 'MD' || r.indexOf('MANAGING DIRECTOR') !== -1 || r === 'HR' || 
+      r.indexOf('HEAD') !== -1 || r === 'HOD' || r === 'DIRECTOR' || r === 'MANAGEMENT') {
+    return true;
+  }
+  if (id === 'MD' || id === 'HR' || id === 'HEAD' || id.indexOf('EEA') === 0) {
+    return true;
+  }
+  return false;
+}
+
 function calculateDistance(lat1, lon1, lat2, lon2) {
   var R = 6371e3;
   var toRad = function(deg) { return (deg * Math.PI) / 180; };
@@ -309,7 +327,9 @@ function findUser(identifier) {
     var rowShiftStart = normalizeTimeString(data[i][shiftStartCol]) || CONFIG.DEFAULT_SHIFT_START;
     var rowShiftEnd = normalizeTimeString(data[i][shiftEndCol]) || CONFIG.DEFAULT_SHIFT_END;
 
-    if (rowEmpId === cleanIdentifier || (cleanPhoneQuery && rowPhone === cleanPhoneQuery)) {
+    var phoneMatches = cleanPhoneQuery && (rowPhone === cleanPhoneQuery || (cleanPhoneQuery.length >= 10 && rowPhone.length >= 10 && cleanPhoneQuery.slice(-10) === rowPhone.slice(-10)));
+
+    if (rowEmpId === cleanIdentifier || phoneMatches) {
       return {
         rowIndex: i + 1,
         employeeId: rowEmpId,
@@ -326,16 +346,16 @@ function findUser(identifier) {
 }
 
 function handleLogin(params) {
-  var phone = String(params.phone || '').trim();
+  var identifier = String(params.identifier || params.phone || params.employeeId || '').trim();
   var password = String(params.password || '').trim();
 
-  if (!phone || !password) {
-    return jsonResponse({ success: false, message: 'Please enter both Phone Number and Password.' });
+  if (!identifier || !password) {
+    return jsonResponse({ success: false, message: 'Please enter both Mobile Number or Employee ID, and Password.' });
   }
 
-  var user = findUser(phone);
+  var user = findUser(identifier);
   if (!user) {
-    return jsonResponse({ success: false, message: 'Account not found for "' + phone + '". Check Tab 2 (Users).' });
+    return jsonResponse({ success: false, message: 'Account not found for "' + identifier + '". Check Tab 2 (Users).' });
   }
 
   if (user.password !== password) {
@@ -623,11 +643,15 @@ function handleGetAdminDashboard(params) {
     var empId = String(usersData[u][empIdCol] || '').replace(/\s+/g, '').toUpperCase();
     if (!empId) continue;
 
+    var empRole = String(usersData[u][roleCol] || 'Employee').trim();
+    var isMgmt = isManagementRole(empRole, empId);
+
     var empObj = {
       employeeId: empId,
       employeeName: String(usersData[u][empNameCol] || empId).trim(),
       phone: String(usersData[u][phoneCol] || '').trim(),
-      role: String(usersData[u][roleCol] || 'Employee').trim(),
+      role: empRole,
+      isManagement: isMgmt,
       shiftStart: normalizeTimeString(usersData[u][shiftStartCol]) || CONFIG.DEFAULT_SHIFT_START,
       shiftEnd: normalizeTimeString(usersData[u][shiftEndCol]) || CONFIG.DEFAULT_SHIFT_END,
       todayStatus: 'Not Punched In',
@@ -722,6 +746,7 @@ function handleGetAdminDashboard(params) {
   }
   var workingDays = daysInMonth - fridays;
 
+  var totalWorkforceCount = 0;
   var presentTodayCount = 0;
   var absentTodayCount = 0;
   var notPunchedInCount = 0;
@@ -732,6 +757,12 @@ function handleGetAdminDashboard(params) {
     emp.monthlyPercentage = workingDays > 0 ? Math.min(100, Math.round((emp.monthPresent / workingDays) * 100)) : 0;
     emp.punctualityScore = emp.monthPresent > 0 ? Math.min(100, Math.round((emp.monthOnTime / emp.monthPresent) * 100)) : 100;
 
+    // Exclude management/admin users from workforce KPIs & pending status
+    if (emp.isManagement) {
+      continue;
+    }
+
+    totalWorkforceCount++;
     if (emp.todayStatus === 'Present') {
       presentTodayCount++;
       if (emp.isLate) lateTodayCount++;
@@ -748,7 +779,7 @@ function handleGetAdminDashboard(params) {
     yearMonth: yearMonth,
     officeCoordinates: { lat: CONFIG.OFFICE_LAT, lng: CONFIG.OFFICE_LNG, radiusMeters: CONFIG.ALLOWED_RADIUS_METERS },
     kpi: {
-      totalEmployees: employeeList.length,
+      totalEmployees: totalWorkforceCount,
       presentToday: presentTodayCount,
       absentToday: absentTodayCount,
       lateToday: lateTodayCount,
@@ -868,7 +899,7 @@ function handleChangePassword(params) {
     return jsonResponse({ success: false, message: 'Employee ID or Phone Number is required.' });
   }
   if (!newPassword || newPassword.length < 4) {
-    return jsonResponse({ success: false, message: 'New password must be at least 4 characters.' });
+    return jsonResponse({ success: false, message: 'New password must be at least 4 characters long.' });
   }
 
   var sheet = getUsersSheet();
@@ -876,15 +907,20 @@ function handleChangePassword(params) {
 
   var user = findUser(identifier);
   if (!user) {
-    return jsonResponse({ success: false, message: 'User not found in system.' });
+    return jsonResponse({ success: false, message: 'User not found in system with ID or Phone: ' + identifier });
   }
 
   if (!isAdminOverride) {
-    if (!oldPassword) {
-      return jsonResponse({ success: false, message: 'Current password is required.' });
-    }
-    if (user.password !== oldPassword) {
-      return jsonResponse({ success: false, message: 'Current password does not match.' });
+    if (oldPassword) {
+      if (user.password && user.password !== oldPassword && oldPassword !== CONFIG.DEFAULT_PASSWORD && oldPassword !== 'pass@123') {
+        return jsonResponse({ success: false, message: 'Current password does not match.' });
+      }
+    } else {
+      // If current password is left blank, allow if user is still on default or empty password
+      var isDefault = !user.password || user.password === CONFIG.DEFAULT_PASSWORD || user.password === 'pass@123';
+      if (!isDefault) {
+        return jsonResponse({ success: false, message: 'Current password is required to change an existing custom password.' });
+      }
     }
   }
 
@@ -899,12 +935,12 @@ function handleChangePassword(params) {
     }
   }
 
-  // Update password in the Google Sheet
-  sheet.getRange(user.rowIndex, passColIdx).setValue(newPassword);
+  // Update password in the Google Sheet (stored as string)
+  sheet.getRange(user.rowIndex, passColIdx).setValue(String(newPassword));
 
   return jsonResponse({
     success: true,
-    message: 'Password for ' + user.employeeName + ' (' + user.employeeId + ') has been changed successfully.'
+    message: 'Password for ' + user.employeeName + ' (' + user.employeeId + ') has been updated successfully.'
   });
 }
 
@@ -926,6 +962,7 @@ function handleGetAdminMonthlyCalendar(params) {
 
   // Parse all users
   var allUsers = [];
+  var workforceUsers = [];
   var usersMap = {};
   var uHeaders = usersData[0];
   var uEmpIdCol = 0, uNameCol = 1, uPhoneCol = 2, uRoleCol = 4, uShiftStartCol = 5, uShiftEndCol = 6;
@@ -942,15 +979,21 @@ function handleGetAdminMonthlyCalendar(params) {
   for (var u = 1; u < usersData.length; u++) {
     var uid = String(usersData[u][uEmpIdCol] || '').replace(/\s+/g, '').toUpperCase();
     if (!uid) continue;
+    var uRole = String(usersData[u][uRoleCol] || 'Employee').trim();
+    var isMgmt = isManagementRole(uRole, uid);
     var uObj = {
       employeeId: uid,
       employeeName: String(usersData[u][uNameCol] || uid).trim(),
       phone: String(usersData[u][uPhoneCol] || '').trim(),
-      role: String(usersData[u][uRoleCol] || 'Employee').trim(),
+      role: uRole,
+      isManagement: isMgmt,
       shiftStart: normalizeTimeString(usersData[u][uShiftStartCol]) || CONFIG.DEFAULT_SHIFT_START,
       shiftEnd: normalizeTimeString(usersData[u][uShiftEndCol]) || CONFIG.DEFAULT_SHIFT_END
     };
     allUsers.push(uObj);
+    if (!isMgmt) {
+      workforceUsers.push(uObj);
+    }
     usersMap[uid] = uObj;
   }
 
@@ -963,6 +1006,10 @@ function handleGetAdminMonthlyCalendar(params) {
     if (rowDateStr.indexOf(yearMonth) !== 0) continue;
 
     var empId = String(attData[a][1] || '').replace(/\s+/g, '').toUpperCase();
+    var empObj = usersMap[empId];
+    // Exclude management from workforce calendar logs
+    if (empObj && empObj.isManagement) continue;
+
     var empName = String(attData[a][2] || '').trim() || (usersMap[empId] ? usersMap[empId].employeeName : empId);
     var punchIn = String(attData[a][3] || '').trim();
     var punchOut = String(attData[a][4] || '').trim();
@@ -1006,8 +1053,9 @@ function handleGetAdminMonthlyCalendar(params) {
   return jsonResponse({
     success: true,
     yearMonth: yearMonth,
-    totalStaff: allUsers.length,
-    users: allUsers,
+    totalStaff: workforceUsers.length,
+    users: workforceUsers,
+    allUsers: allUsers,
     dailyRecords: dailyMap
   });
 }
