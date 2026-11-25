@@ -436,6 +436,30 @@ function handlePunchIn(params) {
     }
   }
 
+  // 13:00 (01:00 PM) Cutoff Rule: Must punch in before 13:00, otherwise marked Absent
+  var punchMinutes = parseTimeToMinutes(currentTimeStr);
+  if (punchMinutes !== null && punchMinutes >= 13 * 60) {
+    sheet.appendRow([
+      todayStr,
+      user.employeeId,
+      user.employeeName,
+      '', // Punch In
+      '', // Punch Out
+      '-', // Work Duration
+      'Absent',
+      'Absent',
+      'Auto-marked Absent (Not punched before 13:00)',
+      deviceFingerprint,
+      coords || (clientLat + ', ' + clientLng),
+      distanceMeters ? (distanceMeters + 'm') : 'After 13:00 Cutoff'
+    ]);
+
+    return jsonResponse({
+      success: false,
+      message: 'Cutoff Passed: Punch-in must be completed before 01:00 PM (13:00). You have been marked Absent for today (' + todayStr + ').'
+    });
+  }
+
   // Calculate punctuality on Punch In
   var punctuality = calculatePunctuality(currentTimeStr, user.shiftStart, CONFIG.DEFAULT_GRACE_MINUTES);
 
@@ -746,6 +770,12 @@ function handleGetAdminDashboard(params) {
   }
   var workingDays = daysInMonth - fridays;
 
+  var currentSysDate = getFormattedDate();
+  var currentSysTimeStr = getFormattedTime();
+  var currentSysMinutes = parseTimeToMinutes(currentSysTimeStr);
+  // Cutoff is passed if targetDate is before today, OR if targetDate is today and current time >= 13:00 (780 mins)
+  var isCutoffPassed = (targetDate < currentSysDate) || (targetDate === currentSysDate && currentSysMinutes !== null && currentSysMinutes >= 13 * 60);
+
   var totalWorkforceCount = 0;
   var presentTodayCount = 0;
   var absentTodayCount = 0;
@@ -760,6 +790,13 @@ function handleGetAdminDashboard(params) {
     // Exclude management/admin users from workforce KPIs & pending status
     if (emp.isManagement) {
       continue;
+    }
+
+    // 13:00 Cutoff Enforcement: Mark unpunched workforce as Absent
+    if (isCutoffPassed && emp.todayStatus === 'Not Punched In') {
+      emp.todayStatus = 'Absent';
+      emp.punctualityStatus = 'Absent';
+      emp.absenceReason = 'Auto-marked Absent (Not punched before 13:00)';
     }
 
     totalWorkforceCount++;
@@ -1047,6 +1084,49 @@ function handleGetAdminMonthlyCalendar(params) {
         employeeName: empName,
         reason: reason
       });
+    }
+  }
+
+  // 13:00 Cutoff Enforcement for Calendar: Ensure all unpunched workforce members on past days & today (if >= 13:00) appear in absent list
+  var todaySysDate = getFormattedDate();
+  var todaySysMinutes = parseTimeToMinutes(getFormattedTime());
+  var ymParts = yearMonth.split('-');
+  var calYear = parseInt(ymParts[0], 10);
+  var calMonth = parseInt(ymParts[1], 10);
+  var daysInCalMonth = new Date(calYear, calMonth, 0).getDate();
+
+  for (var cd = 1; cd <= daysInCalMonth; cd++) {
+    var cDateObj = new Date(calYear, calMonth - 1, cd);
+    if (cDateObj.getDay() === 5) continue; // Skip Fridays (office weekly off)
+
+    var cMm = String(calMonth).padStart(2, '0');
+    var cDd = String(cd).padStart(2, '0');
+    var cDateKey = calYear + '-' + cMm + '-' + cDd;
+
+    var isCalCutoff = (cDateKey < todaySysDate) || (cDateKey === todaySysDate && todaySysMinutes !== null && todaySysMinutes >= 13 * 60);
+    if (!isCalCutoff) continue;
+
+    if (!dailyMap[cDateKey]) {
+      dailyMap[cDateKey] = { present: [], absent: [] };
+    }
+
+    var recordedMap = {};
+    for (var pi = 0; pi < dailyMap[cDateKey].present.length; pi++) {
+      recordedMap[dailyMap[cDateKey].present[pi].employeeId] = true;
+    }
+    for (var ai = 0; ai < dailyMap[cDateKey].absent.length; ai++) {
+      recordedMap[dailyMap[cDateKey].absent[ai].employeeId] = true;
+    }
+
+    for (var wi = 0; wi < workforceUsers.length; wi++) {
+      var wEmp = workforceUsers[wi];
+      if (!recordedMap[wEmp.employeeId]) {
+        dailyMap[cDateKey].absent.push({
+          employeeId: wEmp.employeeId,
+          employeeName: wEmp.employeeName,
+          reason: 'Auto-marked Absent (Not punched before 13:00)'
+        });
+      }
     }
   }
 

@@ -220,6 +220,10 @@
               </div>
               <span class="tracking-wide">PUNCH IN</span>
             </button>
+            <div class="text-[10px] text-center text-slate-500 font-medium -mt-1 pb-1 flex items-center justify-center gap-1.5">
+              <i class="fa-solid fa-clock text-amber-500 text-[11px]"></i>
+              <span>Punch-in cutoff: <strong>01:00 PM (13:00)</strong> • Unpunched marked Absent</span>
+            </div>
 
             <!-- 2. Punch Out (Amber / Red) -->
             <button 
@@ -1587,6 +1591,27 @@
               return resolve({ success: false, message: `You have already punched in today at ${existing.punchInTime}. Duplicate Punch In is blocked.` });
             }
 
+            // 13:00 Cutoff Enforcement in simulated fallback
+            if (new Date().getHours() >= 13) {
+              const absRecord = {
+                date: todayStr,
+                employeeId: user.employeeId,
+                employeeName: user.employeeName,
+                punchInTime: '',
+                punchOutTime: '',
+                status: 'Absent',
+                absenceReason: 'Auto-marked Absent (Not punched before 13:00)',
+                deviceFingerprint: params.deviceFingerprint,
+                coords: params.coords,
+                distanceMeters: 'After 13:00 Cutoff'
+              };
+              simulatedStore.attendance.push(absRecord);
+              return resolve({
+                success: false,
+                message: `Cutoff Passed: Punch In must be completed before 01:00 PM (13:00). You have been marked Absent for today (${todayStr}).`
+              });
+            }
+
             // Bidirectional Lock Check
             const empDeviceLock = simulatedStore.attendance.find(a => a.date === todayStr && a.employeeId === user.employeeId && a.deviceFingerprint !== params.deviceFingerprint);
             if (empDeviceLock) {
@@ -1732,6 +1757,13 @@
                 punchIn = todayRec.punchInTime || '-';
                 punchOut = todayRec.punchOutTime || '-';
                 absenceReason = todayRec.absenceReason || '-';
+              } else {
+                const now = new Date();
+                const isCutoff = (targetDate < todayStr) || (targetDate === todayStr && now.getHours() >= 13);
+                if (isCutoff) {
+                  todayStatus = 'Absent';
+                  absenceReason = 'Auto-marked Absent (Not punched before 13:00)';
+                }
               }
 
               if (todayStatus === 'Present') presentToday++;
@@ -1832,6 +1864,19 @@
         showToast('warning', 'Employee ID Missing', 'Please enter your Employee ID (e.g., EEI001).');
         empInput.focus();
         return;
+      }
+
+      // 13:00 Cutoff Rule: Block Punch In at or after 1:00 PM (13:00)
+      if (actionType === 'punchIn') {
+        const now = new Date();
+        if (now.getHours() >= 13) {
+          showToast(
+            'error', 
+            'Punch In Cutoff Passed', 
+            'Punch In must be completed before 01:00 PM (13:00). You have been marked Absent for today.'
+          );
+          return;
+        }
       }
 
       if (!state.userLocation) {
@@ -2440,9 +2485,19 @@
 
         if (res.success) {
           const employees = res.employees || [];
+          const now = new Date();
+          const todayStr = now.toISOString().split('T')[0];
+          const isCutoffPassed = (selectedDate < todayStr) || (selectedDate === todayStr && now.getHours() >= 13);
           
           employees.forEach(emp => {
             emp.isManagement = isManagementUser(emp.role, emp.employeeId);
+
+            // 13:00 Cutoff Enforcement: Mark unpunched workforce as Absent
+            if (!emp.isManagement && emp.todayStatus === 'Not Punched In' && isCutoffPassed) {
+              emp.todayStatus = 'Absent';
+              emp.absenceReason = 'Auto-marked Absent (Not punched before 13:00)';
+            }
+
             // Clean up times
             emp.cleanPunchIn = formatCleanTime(emp.punchInTime);
             emp.cleanPunchOut = formatCleanTime(emp.punchOutTime);
@@ -2993,17 +3048,35 @@
         const dd = String(day).padStart(2, '0');
         const dateKey = `${year}-${mm}-${dd}`;
 
+        const isTodayCell = isCurrentMonth && day === todayDateNum;
+        const isFuture = isCurrentMonth && day > todayDateNum;
+        const isPastOrCutoff = (!isFuture && !isTodayCell) || (isTodayCell && today.getHours() >= 13);
+
         const dayData = (dailyRecords && dailyRecords[dateKey]) ? dailyRecords[dateKey] : { present: [], absent: [] };
         const rawPList = dayData.present || [];
         const rawAList = dayData.absent || [];
         const pList = rawPList.filter(p => !isManagementUser(p.role, p.employeeId));
-        const aList = rawAList.filter(a => !isManagementUser(a.role, a.employeeId));
+        let aList = rawAList.filter(a => !isManagementUser(a.role, a.employeeId));
+
+        // 13:00 Cutoff: If cutoff passed on a workday, unpunched workforce is marked Absent
+        if (!isFriday && isPastOrCutoff && workforceUsers.length > 0) {
+          const recordedMap = {};
+          pList.forEach(p => { recordedMap[p.employeeId] = true; });
+          aList.forEach(a => { recordedMap[a.employeeId] = true; });
+
+          workforceUsers.forEach(u => {
+            if (!recordedMap[u.employeeId]) {
+              aList.push({
+                employeeId: u.employeeId,
+                employeeName: u.employeeName,
+                reason: 'Unpunched by 13:00'
+              });
+            }
+          });
+        }
 
         totalPresentManDays += pList.length;
         totalAbsentLeaves += aList.length;
-
-        const isTodayCell = isCurrentMonth && day === todayDateNum;
-        const isFuture = isCurrentMonth && day > todayDateNum;
 
         // Base cell styling
         let cellBg = 'bg-white hover:bg-slate-50/90 border-slate-200 text-slate-800';
@@ -3099,14 +3172,33 @@
         : { present: [], absent: [] };
 
       const presentList = (dayData.present || []).filter(p => !isManagementUser(p.role, p.employeeId));
-      const absentList = (dayData.absent || []).filter(a => !isManagementUser(a.role, a.employeeId));
+      let absentList = (dayData.absent || []).filter(a => !isManagementUser(a.role, a.employeeId));
+
+      const now = new Date();
+      const todayIso = now.toISOString().split('T')[0];
+      const isPastOrCutoff = (dateKey < todayIso) || (dateKey === todayIso && now.getHours() >= 13);
 
       // Find pending employees (enrolled workforce staff who neither punched in nor logged absence)
       const loggedIds = {};
       presentList.forEach(p => { loggedIds[p.employeeId] = true; });
       absentList.forEach(a => { loggedIds[a.employeeId] = true; });
 
-      const pendingList = workforceUsers.filter(u => !loggedIds[u.employeeId]);
+      let pendingList = [];
+      if (!isFriday && isPastOrCutoff) {
+        // If 13:00 cutoff has passed, unpunched workforce is marked Absent
+        workforceUsers.forEach(u => {
+          if (!loggedIds[u.employeeId]) {
+            absentList.push({
+              employeeId: u.employeeId,
+              employeeName: u.employeeName,
+              reason: 'Auto-marked Absent (Not punched before 13:00)'
+            });
+          }
+        });
+        pendingList = [];
+      } else {
+        pendingList = workforceUsers.filter(u => !loggedIds[u.employeeId]);
+      }
 
       // Set counts
       document.getElementById('adminDayCountPresent').textContent = presentList.length;
